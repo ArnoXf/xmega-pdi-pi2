@@ -10,7 +10,9 @@
 #include <sched.h>
 #include <sys/mman.h>
 #include <string.h>
-#include <bcm2835.h>
+
+// Interface for SAMA5D2 PIO wrapping the bcm2835 functions
+#include "sama5d2pio.cc"
 
 typedef struct
 {
@@ -254,6 +256,9 @@ void pdi_close (void)
   sp.sched_priority = 0;
   sched_setscheduler (0, SCHED_OTHER, &sp);
   munlockall ();
+
+
+	bcm2835_cleanup();
 }
 
 

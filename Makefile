@@ -9,6 +9,8 @@ OBJS=$(addprefix objs/, \
 )
 
 VPATH=src
+CC=arm-linux-gnueabihf-gcc
+CXX=arm-linux-gnueabihf-g++
 
 objs/%.o: %.c
 	$(CC) $(CFLAGS) $< -c -o $@
@@ -16,12 +18,11 @@ objs/%.o: %.c
 objs/%.o: %.cc
 	$(CXX) $(CXXFLAGS) $< -c -o $@
 
-CFLAGS+=-O3 -g -std=c99 -Wall -Wextra -Isrc
+CFLAGS+=-O3 -g -std=gnu99 -Wall -Wextra -Isrc
 CXXFLAGS+=-O3 -g -std=c++0x -Wall -Wextra -Isrc
-LDFLAGS+=-lbcm2835
 
 pdi: $(OBJS)
-	$(CXX) $(OBJS) $(LDFLAGS) -o $@
+	$(CXX) $(OBJS) -o $@
 
 .PHONY: clean
 clean:
