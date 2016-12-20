@@ -34,7 +34,6 @@
 #define PIO_IOFR        0x03C
 #define PIO_WPMR        0x5E0
 #define PIO_WPSR        0x5E4
-#define IO_GROUP        1
 #define OFFSET          0x40
 // Config-register: Input (direction: input, pull-up enabled)
 #define BCM2835_GPIO_FSEL_INPT  0x200u
@@ -55,7 +54,7 @@ void bcm2835_gpio_set(uint8_t pin);
 uint8_t bcm2835_gpio_lev(uint8_t pin); 
 void bcm2835_gpio_fsel(uint8_t pin, uint16_t mode);
 void bcm2835_delayMicroseconds(uint64_t micros);
-int* getreg(int off);
+int* getreg(int off, int io_group);
 
 int bcm2835_init(void){
 	// Open /dev/mem file
@@ -81,26 +80,24 @@ void bcm2835_cleanup(){
 }
 
 void bcm2835_gpio_clr(uint8_t pin){
-	*(getreg(PIO_CODR)) = 1 << pin;
-	bcm2835_delayMicroseconds(1);
+	*(getreg(PIO_CODR, pin/32)) = 1 << pin%32;
 }
 
 void bcm2835_gpio_set(uint8_t pin){
-	*(getreg(PIO_SODR)) = 1 << pin;
-	bcm2835_delayMicroseconds(1);
+	*(getreg(PIO_SODR, pin/32)) = 1 << pin%32;
 }
 
 void bcm2835_gpio_fsel(uint8_t pin, uint16_t mode) {
-	*(getreg(PIO_MSKR)) = 1 << pin;
-	*(getreg(PIO_CFGR)) = mode;
-	bcm2835_delayMicroseconds(1);
+	*(getreg(PIO_MSKR, pin/32)) = 1 << pin%32;
+	*(getreg(PIO_CFGR, pin/32)) = mode;
 }
 
 uint8_t bcm2835_gpio_lev(uint8_t pin) {
-	return (*(getreg(PIO_PDSR)) & (1 << pin)) ? HIGH : LOW;
+	return (*(getreg(PIO_PDSR, pin/32)) & (1 << pin%32)) ? HIGH : LOW;
 }
 
 void bcm2835_delayMicroseconds(uint64_t micros) {
+#ifdef GETTIME
 	struct timespec ttime,curtime;
 
 	clock_gettime(CLOCK_REALTIME,&ttime);
@@ -115,9 +112,15 @@ void bcm2835_delayMicroseconds(uint64_t micros) {
 		if (curtime.tv_nsec > ttime.tv_nsec)
 			break;
 	}
+#else
+#define CYCLES_PER_LOOP 3
+	uint32_t l = micros*10000/CYCLES_PER_LOOP;
+	asm volatile( "0:" "SUBS %[count], 1;" "BNE 0b;" :[count]"+r"(l) );
+#endif
+
 }
 
-inline int* getreg(int off) {
+inline int* getreg(int reg_off, int io_group) {
 	// Returns a pointer to the desired register (reference: Atmel 11267 - 31.7)
-	return (int*) ((char*)base_addr + (IO_GROUP*OFFSET) + off);
+	return (int*) ((char*)base_addr + (io_group*OFFSET) + reg_off);
 }
