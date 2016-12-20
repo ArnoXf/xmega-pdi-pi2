@@ -202,15 +202,17 @@ bool pdi_init (uint8_t clk_pin, uint8_t data_pin, uint16_t delay_us)
   bcm2835_gpio_fsel (pdi.clk, BCM2835_GPIO_FSEL_OUTP);
   bcm2835_gpio_fsel (pdi.data, BCM2835_GPIO_FSEL_OUTP);
 
+#if 1
+
   bcm2835_delayMicroseconds(1);
 
-  while(true){
+  for(;;){
 	  bcm2835_gpio_set(pdi.clk);
 	  bcm2835_delayMicroseconds(1);
 	  bcm2835_gpio_clr(pdi.clk);
 	  bcm2835_delayMicroseconds(1);
   }
-
+#endif
 
   return true;
 }

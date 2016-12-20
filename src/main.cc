@@ -112,7 +112,7 @@ int main (int argc, char *argv[])
   const char *fname = 0;
   bool chip_erase = false;
 
-  page_map_512_t page_map;
+  page_map_256_t page_map;
 
   int opt;
   while ((opt = getopt (argc, argv, "a:bc:d:h:s:qD:F:E")) != -1)
@@ -194,12 +194,12 @@ int main (int argc, char *argv[])
     uint32_t keep_len = dump_len;
     while (dump_len)
     {
-      uint16_t offs = dump_addr % 512;
-      uint16_t len = (dump_len > 512) ? 512 : dump_len;
+      uint16_t offs = dump_addr % 256;
+      uint16_t len = (dump_len > 256) ? 256 : dump_len;
       uint32_t pgaddr = dump_addr - offs;
       auto &pg = page_map[pgaddr];
       pg.addr = pgaddr;
-      if (!nvm_read (flash_base + pgaddr, pg.data, 512))
+      if (!nvm_read (flash_base + pgaddr, pg.data, 256))
         bail_out (10);
 
       dump_len -= len;
@@ -238,13 +238,13 @@ out:
 
   if (!ret && dump_mem)
   {
-    uint16_t start_offs = dump_addr % 512;
-    uint16_t end_offs = (dump_addr + dump_len) % 512;
+    uint16_t start_offs = dump_addr % 256;
+    uint16_t end_offs = (dump_addr + dump_len) % 256;
     auto p = page_map.begin ();
     for (size_t i = 0; i < page_map.size (); ++i, ++p)
     {
       uint16_t offs = 0;
-      uint16_t end = 512;
+      uint16_t end = 256;
       if (i == 0)
         offs = start_offs;
       if (i == (page_map.size () -1))

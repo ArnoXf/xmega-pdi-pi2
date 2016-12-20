@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-bool load_ihex (std::istream &is, page_map_512_t &pages)
+bool load_ihex (std::istream &is, page_map_256_t &pages)
 {
   uint32_t addr_upper = 0;
   std::string line;
@@ -59,16 +59,16 @@ bool load_ihex (std::istream &is, page_map_512_t &pages)
       case 0x00:
       {
         uint16_t addr = ((uint16_t)addr_hi << 8) | addr_lo;
-        int16_t  offs = addr % 512;
+        int16_t  offs = addr % 256;
         uint32_t pgaddr = addr_upper + addr - offs;
         auto *pg = &pages[pgaddr];
         pg->addr = pgaddr;
         for (size_t i = 0; i < data.size (); ++i)
         {
-          if (offs + i == 512) // argh, page boundary!
+          if (offs + i == 256) // argh, page boundary!
           {
-            pgaddr += 512;
-            offs -= 512;
+            pgaddr += 256;
+            offs -= 256;
             pg = &pages[pgaddr];
           }
           pg->data[offs + i] = data[i];

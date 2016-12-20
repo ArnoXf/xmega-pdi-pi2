@@ -142,7 +142,7 @@ Known limitations
 -----------------
 
   - Only tested with XMEGA256A3
-  - Assumes a flash page size of 512 bytes
+  - Assumes a flash page size of 256 bytes
   - No support for writing to EEPROM
   - No support for FUSEs
 
