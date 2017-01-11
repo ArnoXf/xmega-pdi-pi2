@@ -12,6 +12,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "sama5d2pio.h"
+
 #define PDI_REG_STATUS  0x00
 #define PDI_REG_RESET   0x01
 #define PDI_REG_CONTROL 0x02

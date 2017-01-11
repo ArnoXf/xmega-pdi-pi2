@@ -11,9 +11,6 @@
 #include <sys/mman.h>
 #include <string.h>
 
-// Interface for SAMA5D2 PIO wrapping the bcm2835 functions
-#include "sama5d2pio.cc"
-
 typedef struct
 {
   uint8_t val;
@@ -202,7 +199,7 @@ bool pdi_init (uint8_t clk_pin, uint8_t data_pin, uint16_t delay_us)
   bcm2835_gpio_fsel (pdi.clk, BCM2835_GPIO_FSEL_OUTP);
   bcm2835_gpio_fsel (pdi.data, BCM2835_GPIO_FSEL_OUTP);
 
-#if 1
+#if 0 
 
   bcm2835_delayMicroseconds(1);
 
