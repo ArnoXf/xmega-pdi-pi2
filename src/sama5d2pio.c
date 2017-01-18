@@ -59,7 +59,7 @@ uint8_t bcm2835_gpio_lev(uint8_t pin) {
 }
 
 void bcm2835_delayMicroseconds(uint64_t micros) {
-#ifdef GETTIME
+#if 0
 	struct timespec ttime,curtime;
 
 	clock_gettime(CLOCK_REALTIME,&ttime);
@@ -74,10 +74,11 @@ void bcm2835_delayMicroseconds(uint64_t micros) {
 		if (curtime.tv_nsec > ttime.tv_nsec)
 			break;
 	}
-#elsif 0
+#endif
+#if 1
 #define CYCLES_PER_LOOP 3
 	uint32_t l = micros*500/CYCLES_PER_LOOP;
-	asm volatile( "0:" "SUBS %[count], 1;" "BNE 0b;" : : [count]"r"(l) );
+	asm volatile( "0:" "SUBS %[count], 1;" "BNE 0b;" : : [count]"r"(l) : "memory" );
 #else
 	asm volatile( "NOP" );
 #endif
