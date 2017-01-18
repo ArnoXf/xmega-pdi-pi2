@@ -75,7 +75,7 @@ void bcm2835_delayMicroseconds(uint64_t micros) {
 			break;
 	}
 #endif
-#if 1
+#if 0
 #define CYCLES_PER_LOOP 3
 	uint32_t l = micros*500/CYCLES_PER_LOOP;
 	asm volatile( "0:" "SUBS %[count], 1;" "BNE 0b;" : : [count]"r"(l) : "memory" );
