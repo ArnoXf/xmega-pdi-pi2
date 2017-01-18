@@ -11,9 +11,6 @@
 #include <sys/mman.h>
 #include <string.h>
 
-// Interface for SAMA5D2 PIO wrapping the bcm2835 functions
-#include "sama5d2pio.cc"
-
 typedef struct
 {
   uint8_t val;
