@@ -12,8 +12,8 @@
 #include "page_map.h"
 #include <iostream>
 
-typedef page_t<512>::container_t page_map_512_t;
+typedef page_t<256>::container_t page_map_256_t;
 
-bool load_ihex (std::istream &is, page_map_512_t &pages);
+bool load_ihex (std::istream &is, page_map_256_t &pages);
 
 #endif
