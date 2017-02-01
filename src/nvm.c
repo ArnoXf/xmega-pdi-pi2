@@ -10,7 +10,7 @@
 #include "pdi.h"
 
 #define PAGE_SIZE 256
-#define WAIT_ATTEMPTS 2000
+#define WAIT_ATTEMPTS 20000
 
 enum {
   NVM_NOP                           = 0x00,

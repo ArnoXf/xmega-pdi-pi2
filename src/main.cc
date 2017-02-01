@@ -72,12 +72,13 @@ int error_out (int code)
 void syntax (const char *name)
 {
   fprintf (stderr,
-    "syntax: %s [-h] [-q] [-a baseaddr] [-b] [-c clkpin] [-d datapin] [-s pdidelay] [-D len@offs] [-E] [-F ihexfile]\n\n"
+    "syntax: %s [-h] [-q] [-a baseaddr] [-b] [-c clkpin] [-d datapin] [-g offset] [-s pdidelay] [-D len@offs] [-E] [-F ihexfile]\n\n"
     "  -q             quiet mode\n"
     "  -a baseaddr    override base address (note: PDI address space)\n"
     "  -b             use default boot flash instead of app flash address\n"
     "  -c clkpin      set gpio pin to use as PDI_CLK\n"
     "  -d datapin     set gpio pin to use as PDI_DATA\n"
+	"  -g offset      start flashing from address offset (flash & file)\n"
     "  -s pdidelay    set PDI clock delay, in us\n"
     "  -D len@offs    dump memory, len bytes from (baseaddr + offs)\n"
     "  -E             perform chip erase\n"
@@ -92,7 +93,7 @@ void syntax (const char *name)
   do { ret = retval; goto out; } while (0)
 
 
-int main (int argc, char *argv[])
+int pdi (int argc, char *argv[])
 {
   (void)argc; (void)argv;
 
@@ -112,10 +113,12 @@ int main (int argc, char *argv[])
   const char *fname = 0;
   bool chip_erase = false;
 
+  unsigned rwoff = 0;
+
   page_map_256_t page_map;
 
   int opt;
-  while ((opt = getopt (argc, argv, "a:bc:d:h:s:qD:F:E")) != -1)
+  while ((opt = getopt (argc, argv, "a:bc:d:g:h:s:qD:F:E")) != -1)
   {
     switch (opt)
     {
@@ -123,6 +126,7 @@ int main (int argc, char *argv[])
       case 'b': flash_base = 0x840000; break; // bootarea for x256
       case 'c': clk_pin = atoi (optarg); break;
       case 'd': data_pin = atoi (optarg); break;
+	  case 'g': rwoff = strtoul (optarg, 0, 0); flash_base += rwoff; break;
       case 's': pdi_delay_us = strtoul (optarg, 0, 0); break;
       case 'q': quiet = true; break;
       case 'D':
@@ -155,7 +159,7 @@ int main (int argc, char *argv[])
   if (fname)
   {
     std::ifstream in (fname);
-    if (!load_ihex (in, page_map))
+    if (!load_ihex (in, page_map, rwoff))
       return error_out (2);
   }
 
@@ -261,4 +265,14 @@ out:
     printf ("ok\n");
     return 0;
   }
+}
+
+int write(int startaddr) {
+
+
+	return 0;
+}
+
+int main (int argc, char *argv[]) {
+	return pdi(argc, argv);
 }

@@ -14,6 +14,6 @@
 
 typedef page_t<256>::container_t page_map_256_t;
 
-bool load_ihex (std::istream &is, page_map_256_t &pages);
+bool load_ihex (std::istream &is, page_map_256_t &pages, unsigned lineno);
 
 #endif
