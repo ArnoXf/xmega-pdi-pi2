@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-bool load_ihex (std::istream &is, page_map_256_t &pages, unsigned startaddr = 0)
+bool load_ihex (std::istream &is, page_map_256_t &pages, uint16_t startaddr = 0)
 {
   uint32_t addr_upper = 0;
   std::string line;
@@ -19,7 +19,7 @@ bool load_ihex (std::istream &is, page_map_256_t &pages, unsigned startaddr = 0)
 
   while (std::getline (is, line) && line.size () >= 11)
   {
-	if(lineno*16<startaddr){lineno++; continue;}
+//	if(lineno*8<startaddr){lineno++; continue;}
 
 	line.erase (line.find_last_not_of (" \n\r\t") +1);
 
@@ -57,18 +57,20 @@ bool load_ihex (std::istream &is, page_map_256_t &pages, unsigned startaddr = 0)
     if (sum)
       return_errinfoloc (false, "checksum mismatch at line", lineno);
  
+	uint16_t addr = ((uint16_t)addr_hi << 8) | addr_lo;
+	if (addr < startaddr && type == 0x00) { continue; }
+
     switch (type)
     {
       case 0x00:
       {
-		uint16_t addr = ((uint16_t)addr_hi << 8) | addr_lo;
 //		printf("%d\n", lineno*16);
 //		printf("%d\n", addr);
         int16_t  offs = addr % 256;
         uint32_t pgaddr = addr_upper + addr - offs;
         auto *pg = &pages[pgaddr];
         pg->addr = pgaddr;
-		printf("\n%08X", pgaddr);
+		printf("\n%08x:", addr);
         for (size_t i = 0; i < data.size (); ++i)
         {
           if (offs + i == 256) // argh, page boundary!
@@ -78,7 +80,8 @@ bool load_ihex (std::istream &is, page_map_256_t &pages, unsigned startaddr = 0)
             pg = &pages[pgaddr];
           }
           pg->data[offs + i] = data[i];
-		  printf("%02X ", data[i]);
+		  printf(" %02x", data[i]);
+		  if (i==7) printf(" ");
         }
         break;
       }

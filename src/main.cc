@@ -113,7 +113,7 @@ int pdi (int argc, char *argv[])
   const char *fname = 0;
   bool chip_erase = false;
 
-  unsigned rwoff = 0;
+  uint16_t rwoff = 0;
 
   page_map_256_t page_map;
 
@@ -126,7 +126,7 @@ int pdi (int argc, char *argv[])
       case 'b': flash_base = 0x840000; break; // bootarea for x256
       case 'c': clk_pin = atoi (optarg); break;
       case 'd': data_pin = atoi (optarg); break;
-	  case 'g': rwoff = strtoul (optarg, 0, 0); flash_base += rwoff; break;
+	  case 'g': rwoff = strtoul (optarg, 0, 0); break; //flash_base += (rwoff-256)/2; break;
       case 's': pdi_delay_us = strtoul (optarg, 0, 0); break;
       case 'q': quiet = true; break;
       case 'D':
