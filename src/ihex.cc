@@ -70,7 +70,7 @@ bool load_ihex (std::istream &is, page_map_256_t &pages, uint16_t startaddr = 0)
         uint32_t pgaddr = addr_upper + addr - offs;
         auto *pg = &pages[pgaddr];
         pg->addr = pgaddr;
-		printf("\n%08x:", addr);
+//		printf("\n%08x:", addr);
         for (size_t i = 0; i < data.size (); ++i)
         {
           if (offs + i == 256) // argh, page boundary!
@@ -80,12 +80,12 @@ bool load_ihex (std::istream &is, page_map_256_t &pages, uint16_t startaddr = 0)
             pg = &pages[pgaddr];
           }
           pg->data[offs + i] = data[i];
-		  printf(" %02x", data[i]);
-		  if (i==7) printf(" ");
+//		  printf(" %02x", data[i]);
+//        if (i==7) printf(" ");
         }
         break;
       }
-      case 0x01: { printf("\n"); return true; } // EOF
+      case 0x01: { return true; } // EOF
       case 0x02: addr_upper = (data[0] << 12) | (data[1] << 4);  break;
       case 0x03: break; // cs:ip, ignore
       case 0x04: addr_upper = (data[0] << 24) | (data[1] << 16); break;
