@@ -19,6 +19,8 @@ extern "C" {
 #include <time.h>
 #include <fstream>
 
+#define PAGESIZE 512
+
 void on_sig (int sig)
 {
 	signal (sig, SIG_DFL);
@@ -92,31 +94,144 @@ void syntax (const char *name)
 #define bail_out(retval) \
 	do { ret = retval; goto out; } while (0)
 
+bool quiet = false;
+uint32_t flash_base = 0x800000;
+uint8_t  clk_pin = 24, data_pin = 21; // j8.18, j8.40
+uint32_t pdi_delay_us = 0;
 
-int pdi (int argc, char *argv[])
-{
-	(void)argc; (void)argv;
-	extern int optint;
+bool dump_mem = false;
+uint32_t dump_addr = 0, dump_len = 0;
+const char *fname = 0;
+bool chip_erase = false;
 
+uint32_t rwoff = 0;
+
+int pdi () {
+	page_map_t page_map;
 	int ret = 0;
 
+	if (fname)
+	{
+		std::ifstream in (fname);
+		if (!load_ihex (in, page_map, rwoff))
+			return error_out (2);
+	}
+
+	if (!quiet)
+	{
+		const char *hint = "unknown";
+		if (flash_base == 0x800000)
+			hint = "app-flash";
+		if (flash_base == 0x840000)
+			hint = "boot-flash";
+		printf (
+				"\nUsing: clk=gpio%d, data=gpio%d, delay: %dus, baseaddr: 0x%08x (%s)\n",
+				clk_pin, data_pin, pdi_delay_us, flash_base+rwoff, hint);
+		printf ("Actions: ");
+		if (dump_mem)
+			printf ("dump-memory ");
+		if (chip_erase)
+			printf ("chip-erase ");
+		if (fname)
+			printf ("program:%s ", fname);
+		printf ("\n");
+	}
+
+	// Okay, all the slow stuff is done, now we're entering PDI programming mode
+
+	if (!pdi_init (clk_pin, data_pin, pdi_delay_us))
+		return error_out (3);
+
+	// from here on we need to bail_out(n) instead of error_out, so we pdi_close()
+	if (!pdi_open () || !nvm_wait_enabled ())
+		bail_out (4);
+
+	if (dump_mem)
+	{
+		uint32_t keep_addr = dump_addr;
+		uint32_t keep_len = dump_len;
+		while (dump_len)
+		{
+			uint16_t offs = dump_addr % PAGESIZE;
+			uint16_t len = (dump_len > PAGESIZE) ? PAGESIZE : dump_len;
+			uint32_t pgaddr = dump_addr - offs;
+			auto &pg = page_map[pgaddr];
+			pg.addr = pgaddr;
+			if (!nvm_read (flash_base + pgaddr, pg.data, PAGESIZE))
+				bail_out (10);
+
+			dump_len -= len;
+			dump_addr += len;
+		}
+		dump_addr = keep_addr;
+		dump_len = keep_len;
+	}
+
+	if (chip_erase)
+	{
+		if (!nvm_chip_erase ())
+		{
+			set_errinfo ("failed to perform chip erase", -1);
+			bail_out (11);
+		}
+	}
+
+	if (fname)
+	{
+		bool wok = false;
+		for (auto &i : page_map)
+		{
+			auto &p = i.second;
+			wok = nvm_rewrite_page (flash_base + p.addr, p.data, sizeof (p.data));
+			if(!wok) { 
+				rwoff = p.addr;
+				break;
+			}
+			printf("Successful written %08x\n", p.addr);
+			//		set_errinfo ("failed to rewrite page at address", p.addr);
+			//		bail_out (12);
+		}
+		if(!wok) { 
+			pdi();
+		}
+	}
+
+out:
+	pdi_close ();
+
+	// ...and we're back to being allowed to go a bit slower *phew*
+
+	if (!ret && dump_mem)
+	{
+		uint16_t start_offs = dump_addr % PAGESIZE;
+		uint16_t end_offs = (dump_addr + dump_len) % PAGESIZE;
+		auto p = page_map.begin ();
+		for (size_t i = 0; i < page_map.size (); ++i, ++p)
+		{
+			uint16_t offs = 0;
+			uint16_t end = PAGESIZE;
+			if (i == 0)
+				offs = start_offs;
+			if (i == (page_map.size () -1))
+				end = end_offs;
+
+			dump (p->first + offs, p->second.data + offs, end - offs);
+		}
+	}
+
+	if (ret)
+		return error_out (ret);
+	else
+	{
+		printf ("ok\n");
+		return 0;
+	}
+}
+
+int main (int argc, char *argv[]) {
 	signal (SIGINT, on_sig);
 	signal (SIGTERM, on_sig);
 	signal (SIGQUIT, on_sig);
-
-	bool quiet = false;
-	uint32_t flash_base = 0x800000;
-	uint8_t  clk_pin = 24, data_pin = 21; // j8.18, j8.40
-	uint32_t pdi_delay_us = 0;
-
-	bool dump_mem = false;
-	uint32_t dump_addr = 0, dump_len = 0;
-	const char *fname = 0;
-	bool chip_erase = false;
-
-	uint16_t rwoff = 0;
-
-	page_map_256_t page_map;
 
 	int opt;
 	while ((opt = getopt (argc, argv, "a:bc:d:g:h:s:qD:F:E")) != -1)
@@ -147,7 +262,6 @@ int pdi (int argc, char *argv[])
 			default: syntax (argv[0]); break;
 		}
 	}
-	optind = 0;
 
 	if (!dump_mem && !fname && !chip_erase)
 		syntax (argv[0]);
@@ -158,132 +272,9 @@ int pdi (int argc, char *argv[])
 		return error_out (1);
 	}
 
-	if (fname)
-	{
-		std::ifstream in (fname);
-		if (!load_ihex (in, page_map, rwoff))
-			return error_out (2);
-	}
+	pdi();
 
-	if (!quiet)
-	{
-		const char *hint = "unknown";
-		if (flash_base == 0x800000)
-			hint = "app-flash";
-		if (flash_base == 0x840000)
-			hint = "boot-flash";
-		printf (
-				"Using: clk=gpio%d, data=gpio%d, delay: %dus, baseaddr: 0x%08x (%s)\n",
-				clk_pin, data_pin, pdi_delay_us, flash_base, hint);
-		printf ("Actions: ");
-		if (dump_mem)
-			printf ("dump-memory ");
-		if (chip_erase)
-			printf ("chip-erase ");
-		if (fname)
-			printf ("program:%s ", fname);
-		printf ("\n");
-	}
-
-	// Okay, all the slow stuff is done, now we're entering PDI programming mode
-
-	if (!pdi_init (clk_pin, data_pin, pdi_delay_us))
-		return error_out (3);
-
-	// from here on we need to bail_out(n) instead of error_out, so we pdi_close()
-	if (!pdi_open () || !nvm_wait_enabled ())
-		bail_out (4);
-
-	if (dump_mem)
-	{
-		uint32_t keep_addr = dump_addr;
-		uint32_t keep_len = dump_len;
-		while (dump_len)
-		{
-			uint16_t offs = dump_addr % 256;
-			uint16_t len = (dump_len > 256) ? 256 : dump_len;
-			uint32_t pgaddr = dump_addr - offs;
-			auto &pg = page_map[pgaddr];
-			pg.addr = pgaddr;
-			if (!nvm_read (flash_base + pgaddr, pg.data, 256))
-				bail_out (10);
-
-			dump_len -= len;
-			dump_addr += len;
-		}
-		dump_addr = keep_addr;
-		dump_len = keep_len;
-	}
-
-	if (chip_erase)
-	{
-		if (!nvm_chip_erase ())
-		{
-			set_errinfo ("failed to perform chip erase", -1);
-			bail_out (11);
-		}
-	}
-
-	if (fname)
-	{
-		for (auto &i : page_map)
-		{
-			auto &p = i.second;
-			if (!nvm_rewrite_page (flash_base + p.addr, p.data, sizeof (p.data)))
-			{
-				char *args[9];
-
-				char buf[7];
-				snprintf(buf, 7, "%d", p.addr);
-
-				args[0] = "./pdi";
-				args[1] = "-c";
-				args[2] = "61";
-				args[3] = "-d";
-				args[4] = "26";
-				args[5] = "-F";
-				args[6] = "ADCS-Software_AVR_main.hex";
-				args[7] = "-g";
-				args[8] = buf;
-				pdi(9, args);
-		//		set_errinfo ("failed to rewrite page at address", p.addr);
-		//		bail_out (12);
-			}
-		}
-	}
-
-out:
-	pdi_close ();
-
-	// ...and we're back to being allowed to go a bit slower *phew*
-
-	if (!ret && dump_mem)
-	{
-		uint16_t start_offs = dump_addr % 256;
-		uint16_t end_offs = (dump_addr + dump_len) % 256;
-		auto p = page_map.begin ();
-		for (size_t i = 0; i < page_map.size (); ++i, ++p)
-		{
-			uint16_t offs = 0;
-			uint16_t end = 256;
-			if (i == 0)
-				offs = start_offs;
-			if (i == (page_map.size () -1))
-				end = end_offs;
-
-			dump (p->first + offs, p->second.data + offs, end - offs);
-		}
-	}
-
-	if (ret)
-		return error_out (ret);
-	else
-	{
-		printf ("ok\n");
-		return 0;
-	}
+	return 0;
 }
 
-int main (int argc, char *argv[]) {
-	return pdi(argc, argv);
-}
+

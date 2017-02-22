@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-bool load_ihex (std::istream &is, page_map_256_t &pages, uint16_t startaddr = 0)
+bool load_ihex (std::istream &is, page_map_t &pages, uint32_t startaddr = 0)
 {
   uint32_t addr_upper = 0;
   std::string line;
@@ -19,8 +19,6 @@ bool load_ihex (std::istream &is, page_map_256_t &pages, uint16_t startaddr = 0)
 
   while (std::getline (is, line) && line.size () >= 11)
   {
-//	if(lineno*8<startaddr){lineno++; continue;}
-
 	line.erase (line.find_last_not_of (" \n\r\t") +1);
 
     uint8_t sum = 0;
@@ -57,38 +55,38 @@ bool load_ihex (std::istream &is, page_map_256_t &pages, uint16_t startaddr = 0)
     if (sum)
       return_errinfoloc (false, "checksum mismatch at line", lineno);
  
-	uint16_t addr = ((uint16_t)addr_hi << 8) | addr_lo;
-	if (addr < startaddr && type == 0x00) { continue; }
+	uint32_t addr = ((uint16_t)addr_hi << 8) | addr_lo;
+	if ((addr_upper+addr) < startaddr && type == 0x00) { continue; }
 
     switch (type)
     {
       case 0x00:
       {
-//		printf("%d\n", lineno*16);
-//		printf("%d\n", addr);
-        int16_t  offs = addr % 256;
+        int16_t  offs = addr % PAGESIZE;
         uint32_t pgaddr = addr_upper + addr - offs;
         auto *pg = &pages[pgaddr];
         pg->addr = pgaddr;
-//		printf("\n%08x:", addr);
+//		printf("\n%08x: %08x:", pgaddr, addr);
         for (size_t i = 0; i < data.size (); ++i)
         {
-          if (offs + i == 256) // argh, page boundary!
+          if (offs + i == PAGESIZE) // argh, page boundary!
           {
-            pgaddr += 256;
-            offs -= 256;
+            pgaddr += PAGESIZE;
+            offs -= PAGESIZE;
             pg = &pages[pgaddr];
           }
           pg->data[offs + i] = data[i];
 //		  printf(" %02x", data[i]);
-//        if (i==7) printf(" ");
+//		  if (i==7) printf(" ");
         }
         break;
       }
       case 0x01: { return true; } // EOF
-      case 0x02: addr_upper = (data[0] << 12) | (data[1] << 4);  break;
+      case 0x02: 
+				 addr_upper = ((data[0] << 12) | (data[1] << 4)); 
+				 break;
       case 0x03: break; // cs:ip, ignore
-      case 0x04: addr_upper = (data[0] << 24) | (data[1] << 16); break;
+      case 0x04: addr_upper = ((data[0] << 24) | (data[1] << 16)); break;
       case 0x05: break; // eip, ignore
     }
 

@@ -9,7 +9,7 @@
 #include "nvm.h"
 #include "pdi.h"
 
-#define PAGE_SIZE 256
+#define PAGE_SIZE 512
 #define WAIT_ATTEMPTS 20000
 
 enum {
