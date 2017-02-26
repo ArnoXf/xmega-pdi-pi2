@@ -104,6 +104,8 @@ uint32_t dump_addr = 0, dump_len = 0;
 const char *fname = 0;
 bool chip_erase = false;
 
+bool dok = false;
+
 uint32_t rwoff = 0;
 
 int pdi () {
@@ -150,6 +152,7 @@ int pdi () {
 	{
 		uint32_t keep_addr = dump_addr;
 		uint32_t keep_len = dump_len;
+
 		while (dump_len)
 		{
 			uint16_t offs = dump_addr % PAGESIZE;
@@ -157,14 +160,19 @@ int pdi () {
 			uint32_t pgaddr = dump_addr - offs;
 			auto &pg = page_map[pgaddr];
 			pg.addr = pgaddr;
-			if (!nvm_read (flash_base + pgaddr, pg.data, PAGESIZE))
-				bail_out (10);
+			dok = nvm_read (flash_base + pgaddr, pg.data, PAGESIZE);
+			if(!dok) {
+				dump_len = dump_len - (dump_len%PAGESIZE);
+				break;
+			}
 
 			dump_len -= len;
 			dump_addr += len;
 		}
-		dump_addr = keep_addr;
-		dump_len = keep_len;
+		if(dok) {
+			dump_addr = keep_addr;
+			dump_len = keep_len;
+		}
 	}
 
 	if (chip_erase)
@@ -178,6 +186,7 @@ int pdi () {
 
 	if (fname)
 	{
+		printf("[");
 		bool wok = false;
 		for (auto &i : page_map)
 		{
@@ -187,10 +196,12 @@ int pdi () {
 				rwoff = p.addr;
 				break;
 			}
-			printf("Successful written %08x\n", p.addr);
+			printf("#");
+			//		printf("Successful written %08x\n", p.addr);
 			//		set_errinfo ("failed to rewrite page at address", p.addr);
 			//		bail_out (12);
 		}
+		printf("]");
 		if(!wok) { 
 			pdi();
 		}
@@ -217,13 +228,15 @@ out:
 
 			dump (p->first + offs, p->second.data + offs, end - offs);
 		}
+		if(!dok)
+			pdi();
 	}
 
 	if (ret)
 		return error_out (ret);
 	else
 	{
-		printf ("ok\n");
+		printf ("\nOK!\n");
 		return 0;
 	}
 }
