@@ -1,8 +1,8 @@
 xmega-pdi-pi2
 =============
 
-Programmer for flashing a directly connected AVR XMEGA from a Raspberry
-Pi 2, using the PDI protocol.
+Programmer for flashing a directly connected AVR XMEGA from a SAMA5D2, 
+using the PDI protocol.
 
 
 Rationale

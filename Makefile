@@ -13,8 +13,8 @@ NOPT=$(addprefix nopt/, \
 )
 
 VPATH=src
-CC=arm-linux-gnueabihf-gcc
-CXX=arm-linux-gnueabihf-g++
+CC=arm-linux-gnueabihf-gcc-5
+CXX=arm-linux-gnueabihf-g++-5
 
 objs/%.o: %.c
 	$(CC) $(CFLAGS) $< -c -o $@
