@@ -1,4 +1,4 @@
-xmega-pdi-pi2
+xmega-pdi-sama5d2
 =============
 
 Programmer for flashing a directly connected AVR XMEGA from a SAMA5D2, 
@@ -10,23 +10,21 @@ Rationale
 
 Normally all programming of XMEGA chips is done via a separate programmer,
 such as the AVRISPmkII. When the XMEGA is directly connected to a
-Raspberry Pi, such as on our RPi-LSR-HAT, there is a need to be able to
-program it from said Pi, both for initial firmware installation as well
-as upgrades.
+SAMA5D2 board, there is a need to be able to program it both for initial 
+firmware installation as well as upgrades.
 
 Due to the hard timing constraints imposed by the PDI protocol, this
 typically necessitates adding a separate micro processor to perform the
 actual programming (which is just what the external programmers are).
-Thanks to the Raspberry Pi 2 being a multicore chip, it is possible
-to talk PDI straight to the XMEGA without losing sync. This feat does
-however require boosting the flashing process to realtime priority and
-effectively it uses an entire core while engaging in PDI.
+As the communication breaks when the frequency drops below ~10khz due to
+thread handling (even with highest priority) the flashing is done in a 
+loop. 
 
 
 Features
 --------
 
-The xmega-pdi-pi2 tool provides the following features:
+The xmega-pdi-sama5d2 tool provides the following features:
 
   - Chip erase functionality
   - Flashing (page erase+write) of application & boot areas
@@ -34,13 +32,13 @@ The xmega-pdi-pi2 tool provides the following features:
   - Intel HEX input file support (.ihex files)
   - Configurable GPIO selection
   - Configurable flash base address
-
+  - Flashing from given offset
 
 Usage
 -----
 
 ```
-syntax: ./pdi [-h] [-q] [-a baseaddr] [-b] [-c clkpin] [-d datapin] [-s pdidelay] [-D len@offs] [-E] [-F ihexfile]
+syntax: ./pdi [-h] [-q] [-a baseaddr] [-b] [-c clkpin] [-d datapin] [-s pdidelay] [-D len@offs] [-E] [-F ihexfile] [-g offs]
 
   -q             quiet mode
   -a baseaddr    override base address (note: PDI address space)
@@ -51,20 +49,16 @@ syntax: ./pdi [-h] [-q] [-a baseaddr] [-b] [-c clkpin] [-d datapin] [-s pdidelay
   -D len@offs    dump memory, len bytes from (baseaddr + offs)
   -E             perform chip erase
   -F ihexfile    write ihexfile
+  -g offs        write ihexfile from offs
   -h             show this help
 ```
 
-Length and offset values for dumping memory can be given in decimal or
-hexadecimal (or octal, but why would you?!). Using a non-default `pdidelay`
-value should not be necessary. The default flash base address should be
-sensible for all XMEGAs, but the address picked by the `-b` option is
-only applicable to the XMEGA256. You probably need to use the `-a` option
-with the correct value for other XMEGAs.
-
-A minimum of 25% realtime ratio available, as
-defined by /proc/sys/kernel/sched_rt_period_us and
-/proc/sys/kernel/sched_rt_runtime_us. The tool needs to have a core
-for itself, uninterrupted, while it's talking PDI.
+Length and offset values for dumping memory and writing ihexfile from offs
+can be given in decimal or hexadecimal (or octal, but why would you?!). 
+Using a non-default `pdidelay` value should not be necessary. The default 
+flash base address should be sensible for all XMEGAs, but the address 
+picked by the `-b` option is only applicable to the XMEGA256. You probably 
+need to use the `-a` option with the correct value for other XMEGAs.
 
 
 Examples
@@ -74,8 +68,8 @@ Our application comprises a seperate boot loader and the main application.
 Both are available as Intel HEX format, generated from objdump(1), and
 named "bootloader.ihex" and "main.ihex".
 
-We have an XMEGA256A3 directly connected to the Pi 2. The PDI_CLK line
-is connected to GPIO24 (J8 pin 18), and PDI_DATA is on GPIO21 (J8 pin 40).
+We have an XMEGA256A3 directly connected to the SAMA5D2. The PDI_CLK line
+is connected to GPIO24, and PDI_DATA is on GPIO21.
 
 Erasing chip and installing the bootloader:
 ```
@@ -129,20 +123,18 @@ Building
 
 Required tools and libraries:
 
-  - libcm2835 (available from http://www.airspayce.com/mikem/bcm2835)
-  - C compiler, GNU make  (apt-get install build-essential)
-  - C++ compiler (apt-get install g++)
+  - g++-5-arm-linux-gnueabihf
 
-
-Building the xmega-pdi-pi2 tool is as simple as extracting the source
+Building the xmega-pdi-sama5d2 tool is as simple as extracting the source
 and typing 'make' in the extracted directory.
 
 
 Known limitations
 -----------------
 
-  - Only tested with XMEGA256A3
-  - Assumes a flash page size of 256 bytes
+  - Only tested with XMEGA256A3 (and XMEGA64 but therefor the flash page
+    has to be changed)
+  - Assumes a flash page size of 512 bytes
   - No support for writing to EEPROM
   - No support for FUSEs
 
